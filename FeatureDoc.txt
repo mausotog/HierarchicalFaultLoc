@@ -1,0 +1,21 @@
+Here goes the list of features per category 
+
+Spectrum-Based:
+
+Version-Control:
+
+Predicate-Based:
+
+Static Analysis:
+
+Naturalness:
+
+Code Metrics:
+
+Slicing:
+
+Syntactic:
+
+N-Grams:
+
+
