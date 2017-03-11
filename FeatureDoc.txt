@@ -2,20 +2,58 @@ Here goes the list of features per category
 
 Spectrum-Based:
 
-Version-Control:
+Version-Control: (I'm listing several metrics, depending on our corpus we can get all or a subset of these)
+	-Is pull request
+	-Language
+	-First commit created at
+	-Team size
+	-Source churn (Number of LOC changed by the commit)
+	-Test churn (Number of test code changed by the commit)
+	-Files added
+	-Files deleted
+	-Files modified
+	-Tests added
+	-Tests deleted
+	-Tests modified
+	-Number of commits which have modified the buggy class
+	-Number of commits in the project
+	-Is pushed by core team member
+	-Number of words in the commit comment
 
 Predicate-Based:
 
 Static Analysis:
 
 Naturalness:
+	-Entropy (On the Naturalness of Software)
+	-Probability score (Bugram: Bug Detection with N-gram Language 
+	 Models) (similar to entropy but at statement level)
+	-Probability score (Software Fault Localization Using N-gram Analysis) (similar to
+	 entropy but at block level)
 
 Code Metrics:
+	Basic:
+	-Lines of code in the project/buggy class
+	-Lines/Branch coverage of the project/buggy class when running the test suite
+	-Number of source files
+	-Number of doc files
+	-Number of total files (source+doc+others)
+	-Number of asserts
+	-Bugs per line of code
+	-Comment density
+	-Program size (size of the binary representation of the program, .class files only)
 
+	Optional:
+	-Cohesion
+	-Coupling
+	-Connascence metrics (If you change one component you need to change another for the program to work)
+	-Cyclomatic complexity (Number of linearly independent paths) (Maybe straightforward to get when 
+	 getting the naturalness metrics)
+	-Social metrics (Github stars, etc)
+	-Halstead complexity metrics ("Expression of the code")
+  
 Slicing:
 
-Syntactic:
+(Mau)Syntactic:
 
-N-Grams:
-
-
+N-grams: (I moved these to Naturalness because they are too similar)
