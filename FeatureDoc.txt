@@ -1,7 +1,12 @@
 Here goes the list of features per category 
+Each row is a statement of a faulty class.
 
-Spectrum-Based:
-
+Spectrum-Based: 
+	-Is stmt executed by a positive test case
+	-Is stmt executed by a negative test case
+	-Number of positive test cases that execute this stmt
+	-Number of negative test cases that execute this stmt
+	
 Version-Control: (I'm listing several metrics, depending on our corpus we can get all or a subset of these)
 	-Is pull request
 	-Language
@@ -54,6 +59,11 @@ Code Metrics:
   
 Slicing:
 
-(Mau)Syntactic:
-
-N-grams: (I moved these to Naturalness because they are too similar)
+Syntactic:
+	-Statement kind
+	-Parent statement kind
+	-Number of levels deep the statement is on (how many open parenthesis before getting to the stmt)
+	-Length
+	-Location in parent
+	
+	
