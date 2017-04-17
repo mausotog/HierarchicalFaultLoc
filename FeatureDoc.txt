@@ -66,4 +66,5 @@ Syntactic:
 	-Length
 	-Location in parent
 	
+	There are several other syntactic features that I don't think would tell us much, but we could if they are easy to collect we could collect them too: such as Flags, Root, Hashcode, StructuralProperties, etc. List of available functions in http://help.eclipse.org/neon/index.jsp?topic=%2Forg.eclipse.jdt.doc.isv%2Freference%2Fapi%2Forg%2Feclipse%2Fjdt%2Fcore%2Fdom%2FStatement.html
 	
