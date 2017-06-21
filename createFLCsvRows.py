@@ -8,12 +8,14 @@ import sys
 import shutil
 import time 
 
-d4jHome = "/home/mausoto/FaultLocProject/defects4j/" # os.environ['D4J_HOME']
+
+home="/home/mau/Research/"
+d4jHome = os.environ['D4J_HOME']
 defects4jCommand = d4jHome + "/framework/bin/defects4j"
 buggyPath=""
 fixedPath=""
-#suitePath="/home/mausoto/QualityEvaluationDefects4jGenProg/Evosuite30MinGenProgFixesEvosuite103Comparison/testSuites/"
-output=""
+#suitePath=home+"/QualityEvaluationDefects4jGenProg/Evosuite30MinGenProgFixesEvosuite103Comparison/testSuites/"
+outputFile=""
 project=""
 bug=""
 pathToSource=""
@@ -26,19 +28,26 @@ def writeClassValue():
 		listOfAddedLines = getADiff(f, True)
 		listOfDeletedLines = getADiff(f, False)
 		if len(listOfAddedLines) > 0:
-		
+			print ""
 		else:
-		
+			print ""
 		if len(listOfAddedLines) > 0:
-		
+			print ""
 		else:
-		
+			print ""
+
+def checkout(folderToCheckout, project, bugNum, vers):
+	cmd = defects4jCommand + " checkout -p " + str(project) + " -v " + str(bugNum) + str(vers) + " -w " + str(folderToCheckout)
+	print cmd
+	p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def setScrPath():
+	global pathToSource
 	cmd = defects4jCommand + " export -p dir.src.classes"
 	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	for i in p.stdout:
 		pathToSource = str(i).split("2>&1")[-1].strip()
+		print pathToSource
 		
 def getEditedFiles():
 	cmd = defects4jCommand + " export -p classes.modified"
@@ -52,7 +61,7 @@ def getADiff(pathToFile, new):
 		cmd+="--old-line-format=\"\" --new-line-format=\"%dn \" " 
 	else:
 		cmd+="--old-line-format=\"%dn \" --new-line-format=\"\" " 
-	cmd+=buggyPath+"/"+pathToSource+"/"+#pathToFile +" " + bug.getFixPath()+"/"+pathToSource+"/"+pathToFile
+	cmd+=buggyPath+"/"+pathToSource+"/"#+pathToFile +" " + bug.getFixPath()+"/"+pathToSource+"/"+pathToFile
 	#cmd+=bug.getBugPath()+"/"+pathToSource+"/"+pathToFile +" " + bug.getFixPath()+"/"+pathToSource+"/"+pathToFile
 	#print cmd
 	p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -79,17 +88,17 @@ def getADiff(pathToFile, new):
 				ret.append(changedLine)
 	return ret
 
-def checkout(folderToCheckout, project, bugNum, vers):
-	cmd = defects4jCommand + " checkout -p " + str(project) + " -v " + str(bugNum) + str(vers) + " -w " + str(folderToCheckout)
-	p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
 def updateGlobalVars(args):
-	#CHECK IF THIS PATH IS CORRECT
-	buggyPath="/home/mausoto/FaultLocProject/defects4j/ExamplesCheckedOut/"+str(args.project).toLower+str(args.bug)+"Buggy/"
-	fixedPath="/home/mausoto/FaultLocProject/defects4j/ExamplesCheckedOut/"+str(args.project).toLower+str(args.bug)+"Fixed/"
-	#suitePath="/home/mausoto/QualityEvaluationDefects4jGenProg/Evosuite30MinGenProgFixesEvosuite103Comparison/testSuites/"
-	output=args.output
+	global buggyPath
+	buggyPath=d4jHome+"/ExamplesCheckedOut/"+str(args.project).lower()+str(args.bug)+"Buggy/"
+	global fixedPath
+	fixedPath=d4jHome+"/ExamplesCheckedOut/"+str(args.project).lower()+str(args.bug)+"Fixed/"
+	#global suitePath=home+"/QualityEvaluationDefects4jGenProg/Evosuite30MinGenProgFixesEvosuite103Comparison/testSuites/"
+	global outputFile
+	outputFile=args.output
+	global bug
 	bug=args.bug
+	global project
 	project=args.project
 
 def writeNumberOfHits(coverageTot,coverageNeg):
@@ -107,35 +116,44 @@ def writeNumberOfHits(coverageTot,coverageNeg):
 			lineNumberN = lineN.attrib['number']
 			if(lineNumberN == lineNumberT):
 				hitsN = lineN.attrib['hits']
-				hitsP = lineT.attrib['hits'] - hitsN
-				cmd = "echo \""+ project+","+bug+","+ lineNumberT+","+hitsN+","+hitsP +"\" >> "+ outputFile
+				hitsT = lineT.attrib['hits']
+				hitsP = int(hitsT) - int(hitsN)
+				print lineNumberT+","+hitsT+","+hitsN+","+str(hitsP)
+				cmd = "echo \""+ project+","+bug+","+ lineNumberT+","+hitsT+","+hitsN+","+str(hitsP) +"\" >> "+ outputFile
 				p = subprocess.call(cmd, shell=True)#, cwd=bug.getBugPath(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+				break
 	
 def getFailingTests():
-#I'LL LEAVE THIS FOR LATER BECAUSE I CAN'T ACCESS THE OTHER SCRIPTS RIGHT NOW AND I THINK THE GENPROG SCRIPTS DO THIS EASILY	
-
+	cmd = defects4jCommand + " export -p tests.trigger"
+	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	return [ line for line in p.stdout ]
 	
 def generateCoverageNeg(listOfNegTC):
+	fileNum=0
 	for negTest in listOfNegTC:
 		print negTest
-		cmd = defects4jCommand + " coverage -t " + negTest + " -w " + str(bugPath) + " -o " + #SOME OUTPUT FOLDER TO LATER BUILD THEM UP
-		p = subprocess.call(cmd, shell=True, cwd=bugPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+		cmd = defects4jCommand + " coverage -t " + negTest + " -w " + str(buggyPath) 
+		p = subprocess.call(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
 		#rename it to buggy (if there is more than one buggy test then create several coverageNeg.xml and then merge them)
-		#NOT SURE IF I CAN USE THE -O TO OUTPUT IT WITH A DIFFERENT NAME, IF NOT, I CAN RENAME IT HERE
+		p = subprocess.call("mv coverage.xml coverageNeg" + str(fileNum) + ".xml", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+		fileNum+=1
+#TODO: MERGE ALL THE COVERAGE NEG INTO A SINGLE COVERAGE NEG, MEANWHILE I'M JUST RENAMING
+		p = subprocess.call("mv coverageNeg0.xml coverageNeg.xml", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
 	
-def generateCovTot(args):
+def generateCovTot():
 	#run coverage with the whole test suite and create coverageTot.xml
 	cmd = defects4jCommand + " coverage" # -w " + bug.getFixPath() + " -s " + str(suitePath)
-	p = subprocess.call(cmd, shell=True, cwd=bugPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
-		
+	p = subprocess.call(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+	p = subprocess.call("mv coverage.xml coverageTot.xml", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 #def getEditedFiles():
 #	cmd = defects4jCommand + " export -p classes.modified"
-#	p = subprocess.Popen(cmd, shell=True, cwd=bugPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 #	return [ line.split("2>&1")[-1].strip().replace(".", "/") + ".java" for line in p.stdout ]
 	
 def getOptions():
 #ask as param project and bug number
-	parser = argparse.ArgumentParser(description="This script assumes a buggy version has already been checked out and manually changed to include only positive test cases or only negative. Example of usage: python createFLCsvRows.py Closure 38")
+	parser = argparse.ArgumentParser(description="This script assumes a buggy version has already been checked out and manually changed to include only positive test cases or only negative. Example of usage: python createFLCsvRows.py Closure 38 /home/mau/Research/MLFaultLocProject/output.csv")
 	parser.add_argument("project", help="the project in upper case (ex: Lang, Chart, Closure, Math, Time)")
 	parser.add_argument("bug", help="the bug number (ex: 1,2,3,4,...)")
 	parser.add_argument("output", help="full path of the output file")
@@ -145,19 +163,19 @@ def main():
 	args=getOptions()
 	#errorHandling(args)
 	updateGlobalVars(args)
-	setScrPath()
-	#checkout buggy and fixed versions
-	checkout(buggyPath+, project, bug, "b")
-	checkout(fixedPath+, project, bug, "f")
 	
-	#CHECK IF THIS PATH IS CORRECT
+	#checkout buggy and fixed versions
+	checkout(buggyPath, project, bug, "b")
+	checkout(fixedPath, project, bug, "f")
+	setScrPath()
+	
 	if(os.path.isfile(outputFile)):
 		os.remove(outputFile)
-	cmd = "echo \"Project,Bug,hitsNeg,hitsPos\" >> "+ outputFile
+	cmd = "echo \"Project,Bug,Line Number,hitsTotal,hitsNeg,hitsPos\" >> "+ outputFile
 	p = subprocess.call(cmd, shell=True)#, cwd=bug.getBugPath(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 				
 	#creating xml file
-	pathToXmlFile=bugPath+"/coverage.xml"
+	pathToXmlFile=buggyPath+"/coverage.xml"
 	if os.path.exists(pathToXmlFile):
 		os.remove(pathToXmlFile)
 		
@@ -166,78 +184,15 @@ def main():
 	
 	#run only that one using coverage -t and create coverageNeg.xml
 	generateCoverageNeg(failingTestList)
-	
-	writeNumberOfHits()
+	#run coverage to get the coverage of all the test suite
+	generateCovTot()
+
+	writeNumberOfHits(buggyPath+"/coverageTot.xml",buggyPath+"/coverageNeg.xml")
 	
 	writeClassValue()
 	
 	
 	###################################################
-		allCoverageMetrics=""
-		for f in getEditedFiles(bug):
-			print "Working on file "+f
-			listOfAddedLines = getADiff(f, bug, True)
-			#print "Added lines: "+ str(listOfAddedLines)
-			listOfDeletedLines = getADiff(f, bug, False)
-			#print "Deleted lines: "+ str(listOfDeletedLines) + " Length: " + str(len(listOfDeletedLines))
-			allCoverageMetrics=getInitialCoverageMetrics(bug.getFixPath()+"/coverage.xml")
-			
-			
-			if len(listOfDeletedLines) > 0:
-				[covInfoBuggy,listOfMethodsDel] = computeCoverage(listOfDeletedLines, bug.getBugPath()+"/coverage.xml")
-				#print listOfMethodsDel
-				allCoverageMetrics+=covInfoBuggy #index 0 has lines deleted, coverage of lines deleted and methods changed by lines deleted. Index 1 has a list methods changed
-			else:
-				#print "Nothing deleted"
-				allCoverageMetrics+=",0,-,0"
-				listOfMethodsDel=[]
-			
-			if len(listOfAddedLines) > 0:
-				[covInfoPatched,listOfMethodsAdd] = computeCoverage(listOfAddedLines, bug.getFixPath()+"/coverage.xml")
-				#print listOfMethodsAdd
-				allCoverageMetrics+=covInfoPatched
-			else:
-				#print "Nothing added"
-				allCoverageMetrics+=",0,-,0"
-				listOfMethodsAdd=[]
-				
-			methodsChanged = list(set(listOfMethodsAdd))
-			#print "Methods changed"
-			#print [m for m in methodsChanged]
-			for b in listOfMethodsDel:	
-				#print "Checking if this is in the list above: "+ b 
-				if not (b in methodsChanged):
-					#print "It wasnt!"
-					methodsChanged.append(b)
-			
-			#print "Methods changed after adding the others"
-			#print [m for m in methodsChanged]
-			#Get coverages of changed methods in coverage.xml from the patched version
-			allCoverageMetrics+=getCoveragesOfMethodsChanged(methodsChanged, bug.getFixPath()+"/coverage.xml")
-				
-			#pipes the result to a csv file
-			#Generated patch
-			if not args.patches is None:
-				#patchName=str(bug.getPatch().split('/')[-1].strip())
-				diffName=str(bug.getPatch().split('/')[-1].strip())
-				defect=diffName.split('_')[0]
-				bug=int(filter(str.isdigit, defect))
-				project=str(filter(str.isalpha, defect)).title()
-				seed=int(filter(str.isdigit, diffName.split('_')[1]))
-				edits=diffName.split('_')[2:-1]
-				edits=str(edits).replace("['","").replace("']",")").replace("r', '","r(").replace("d', '","d(").replace("a', '","a(").replace("e', '","e(").replace("', '","_").replace("zer)","zer")
-				#print "diffName: "+diffName
-				#variant=int(filter(str.isdigit, diffName.split('_')[-1]))
-				#variant=""
-				allCoverageMetrics=str(project)+","+str(bug)+","+str(seed)+","+str(edits)+","+str(allCoverageMetrics)
-				#allCoverageMetrics=str(project)+","+str(bug)+","+str(seed)+","+str(edits)+","+str(variant)+","+str(allCoverageMetrics)
-			#Human made patch
-			if not args.many is None or not args.project is None:
-				patchName=str(bug.getProject() +","+ bug.getBugNum())
-				allCoverageMetrics=patchName+","+allCoverageMetrics
-			print allCoverageMetrics
-			cmd = "echo \""+str(allCoverageMetrics)+ "\" >> "+ outputFile
-			p = subprocess.call(cmd, shell=True)#, cwd=bug.getBugPath(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-			print ""
+
 	print "Results in "+outputFile
 main()
