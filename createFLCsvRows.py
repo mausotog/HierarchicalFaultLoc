@@ -23,6 +23,21 @@ pathToSource=""
 #navigate each line of the coverageNeg.xml and coveragePos.xml to record data from each line, things such as: line number, file name, method name, etc
 #difference of buggy and fixed to get the class value
 
+
+def createPosAndNegFiles():
+	posClasses = getEditedFiles()
+	for p in posClasses:
+		cmd = "echo " + str(p) + " >> " + str(buggyPath) + "tests.pos "
+		print cmd
+		p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	
+
+	negTestCases = getFailingTests()
+	for p in negTestCases:
+		cmd = "echo " + str(p) + " >> " + str(buggyPath) + "tests.neg "
+		print cmd
+		p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 def writeClassValue():
 	for f in getEditedFiles():
 		listOfAddedLines = getADiff(f, True)
@@ -47,7 +62,8 @@ def setScrPath():
 	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	for i in p.stdout:
 		pathToSource = str(i).split("2>&1")[-1].strip()
-		print pathToSource
+		#print pathToSource
+	
 		
 def getEditedFiles():
 	cmd = defects4jCommand + " export -p classes.modified"
@@ -118,7 +134,7 @@ def writeNumberOfHits(coverageTot,coverageNeg):
 				hitsN = lineN.attrib['hits']
 				hitsT = lineT.attrib['hits']
 				hitsP = int(hitsT) - int(hitsN)
-				print lineNumberT+","+hitsT+","+hitsN+","+str(hitsP)
+				#print lineNumberT+","+hitsT+","+hitsN+","+str(hitsP)
 				cmd = "echo \""+ project+","+bug+","+ lineNumberT+","+hitsT+","+hitsN+","+str(hitsP) +"\" >> "+ outputFile
 				p = subprocess.call(cmd, shell=True)#, cwd=bug.getBugPath(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 				break
@@ -188,8 +204,10 @@ def main():
 	generateCovTot()
 
 	writeNumberOfHits(buggyPath+"/coverageTot.xml",buggyPath+"/coverageNeg.xml")
+
+	createPosAndNegFiles()
 	
-	writeClassValue()
+	#writeClassValue()
 	
 	
 	###################################################

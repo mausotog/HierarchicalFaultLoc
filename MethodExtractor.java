@@ -1,8 +1,8 @@
 //package clegoues.genprog4java.fitness;
 
-import static clegoues.util.ConfigurationBuilder.BOOLEAN;
-import static clegoues.util.ConfigurationBuilder.DOUBLE;
-import static clegoues.util.ConfigurationBuilder.STRING;
+//import static clegoues.util.ConfigurationBuilder.BOOLEAN;
+//import static clegoues.util.ConfigurationBuilder.DOUBLE;
+//import static clegoues.util.ConfigurationBuilder.STRING;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -29,16 +29,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.log4j.Logger;
+//import org.apache.commons.lang3.tuple.Pair;
+//import org.apache.log4j.Logger;
 import org.junit.runner.Description;
 import org.junit.runner.Request;
-
+/*
 import clegoues.genprog4java.main.Configuration;
 import clegoues.genprog4java.mut.Mutation;
 import clegoues.genprog4java.mut.WeightedMutation;
 import clegoues.genprog4java.rep.Representation;
 import clegoues.util.ConfigurationBuilder;
+*/
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -50,6 +51,21 @@ import junit.framework.TestSuite;
  */
 @SuppressWarnings("rawtypes")
 public class MethodExtractor {
+
+	/** public because {@link clegoues.genprog4java.rep.CachingRepresentation} gets at them
+	 * for sanity checking.  There's probably a better way to do that, I suppose, but whatever.
+	 */
+
+	public String methodsPosFileName="methods.pos"; 
+	public String methodsNegFileName="methods.neg"; 
+
+	public static ArrayList<String> positiveTests = new ArrayList<String>();
+	public static ArrayList<String> negativeTests = new ArrayList<String>();
+
+	private static int numPositiveTests;
+	private static int numNegativeTests;
+
+	String urlsTestPath;
 	
 	/**
 	 * Loads the tests from specified files, initializes the sample vars to not be null.
@@ -57,81 +73,38 @@ public class MethodExtractor {
 	 * Note that this <i>must</i> be called before the initial representation is
 	 * constructed, otherwise the rep will not be able to test itself via sanity checking.
 	 */
-	public MethodExtractor() {
+	public MethodExtractor(String posTestFile, String negTestFile, String urlsTestPath) {
+		//WE COULD ALSO GET THIS FROM defects4j export -p cp.test I THINK
+		this.urlsTestPath = urlsTestPath;
 		ArrayList<String> intermedPosTests = null, intermedNegTests = null;
 
 		intermedPosTests = getTests(posTestFile);
 		intermedNegTests = getTests(negTestFile);
 
-		switch(Fitness.granularity) {
-		case METHOD:
-			explodeTestClasses(intermedPosTests, intermedNegTests);
-		break;
-		case CLASS:
-		default:
-			filterTestClasses(intermedPosTests, intermedNegTests);
-			filterTestClasses(intermedNegTests, intermedPosTests);
-			break;
-		}
+		explodeTestClasses(intermedPosTests, intermedNegTests);
 
 		for(String posTest : intermedPosTests) {
-			positiveTests.add(new TestCase(TestCase.TestType.POSITIVE, posTest));
+			positiveTests.add(posTest);
+			
 		}
-
+		writeToFile(methodsPosFileName, positiveTests);
+		
 		for(String negTest : intermedNegTests) {
-			negativeTests.add(new TestCase(TestCase.TestType.NEGATIVE, negTest));
+			negativeTests.add(negTest);
 		}
+		writeToFile(methodsNegFileName, negativeTests);
+		
 	}
 
-
-	/**
-	 * JUnit is annoying.  Basically, a junit test within a larger test class can be failing.
-	 * This method figures out if that's the way these tests are specified and, if so
-	 * determines their class and then filters those classes out of the
-	 * this method filters those classes out of the positive tests and adds them to the negative test list.
-	 * Note that CLG considered just filtering out the individual methods and allowing the junittestrunner to run
-	 * classes by method in addition to just by class.
-	 * I didn't do it because the max test count is presently still the number of
-	 * test classes specified in the test files and so we'd either need to actually count
-	 * how many tests are being run in total or have the counts/weights be skewed by the one
-	 * class file where we call the methods one at a time.
-	 * @param toFilter list to filter
-	 * @param filterBy stuff to filter out of toFilter
-	 */
-	private void filterTestClasses(ArrayList<String> toFilter, ArrayList<String> filterBy) {
-		ArrayList<String> clazzesInFilterSet = new ArrayList<String>();
-		ArrayList<String> removeFromFilterSet = new ArrayList<String>();
-
-		// stuff in negative tests, must remove class from positive test list and add non-negative tests to list
-		for(String specifiedMethod : filterBy) {
-			if(specifiedMethod.contains("::")) {
-				// remove from toFilter all tests that have this class name
-				// remove from filterBy this particular entry and replace it with just the className
-				String[] split = specifiedMethod.split("::");
-				clazzesInFilterSet.add(split[0]);
-				removeFromFilterSet.add(specifiedMethod);
-			}
-		}
-		for(String removeFromFilterBy : removeFromFilterSet ) {
-			filterBy.remove(removeFromFilterBy);
-		}
-		filterBy.addAll(clazzesInFilterSet);
-
-		ArrayList<String> removeFromFilteredSet = new ArrayList<String>();
-		for(String testNameInToFilter : toFilter ) {
-			String clazzName = "";
-			if(testNameInToFilter.contains("::")) {
-				String[] split = testNameInToFilter.split("::");
-				clazzName = split[0];
-			} else {
-				clazzName = testNameInToFilter;
-			}
-			if(clazzesInFilterSet.contains(clazzName)) {
-				removeFromFilteredSet.add(testNameInToFilter);
-			}
-		}
-		for(String removeFromFiltered : removeFromFilteredSet) {
-			toFilter.remove(removeFromFiltered);
+	private void writeToFile(String fileName, ArrayList<String> tests){
+		try{
+		    PrintWriter writer = new PrintWriter(fileName, "UTF-8");
+		    for(String t : tests){
+		    	writer.println(t);
+		    }
+		    writer.close();
+		} catch (IOException e) {
+		   // do something
 		}
 	}
 
@@ -148,7 +121,8 @@ public class MethodExtractor {
 	 */
 
 	private URLClassLoader testLoader() throws MalformedURLException {
-		String[] split = Configuration.testClassPath.split(":");
+		
+		String[] split = urlsTestPath.split(":");
 		URL[] urls = new URL[split.length];
 		for(int i = 0; i < split.length; i++) {
 			String s = split[i];
@@ -202,7 +176,7 @@ public class MethodExtractor {
 		      }
 		    }
 		} catch (ClassNotFoundException e) {
-			logger.error("Test class " + clazzName + " not found in ExplodeTests!");
+			System.out.println("Test class " + clazzName + " not found in ExplodeTests!");
 		}
 		return realTests;
 	}
@@ -263,7 +237,7 @@ public class MethodExtractor {
 			initialPosTests.clear();
 			initialPosTests.addAll(realPosTests);
 		} catch (MalformedURLException e) {
-			logger.error("malformedURLException, giving up in a profoundly ungraceful way.");
+			System.out.println("malformedURLException, giving up in a profoundly ungraceful way.");
 			Runtime.getRuntime().exit(1);
 		}
 	}
@@ -284,13 +258,15 @@ public class MethodExtractor {
 			}
 			br.close();
 		} catch(IOException e) {
-			logger.error("failed to read " + filename + " giving up");
+			System.out.println("failed to read " + filename + " giving up");
 			Runtime.getRuntime().exit(1);
 		}
 		return allLines;
 	}
 
-
+	public static void main(String[] args){
+		MethodExtractor me = new MethodExtractor(args[1],args[2],args[3]);
+	}
 
 	
 
