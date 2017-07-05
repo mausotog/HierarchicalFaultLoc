@@ -74,7 +74,6 @@ public class MethodExtractor {
 	 * constructed, otherwise the rep will not be able to test itself via sanity checking.
 	 */
 	public MethodExtractor(String posTestFile, String negTestFile, String urlsTestPath) {
-		//WE COULD ALSO GET THIS FROM defects4j export -p cp.test I THINK
 		this.urlsTestPath = urlsTestPath;
 
 		ArrayList<String> intermedPosTests = null, intermedNegTests = null;
@@ -93,7 +92,7 @@ public class MethodExtractor {
 		}
 		writeToFile(methodsPosFileName, positiveTests);
 		
-		for(String negTest : intermedNegTests) {
+		for(String negTest : intermedNegTests) {head 
 			negativeTests.add(negTest);
 		}
 		writeToFile(methodsNegFileName, negativeTests);
@@ -105,7 +104,7 @@ public class MethodExtractor {
 		    PrintWriter writer = new PrintWriter(fileName, "UTF-8");
 		    for(String t : tests){
 		    	writer.println(t);
-			System.out.println("Writting to file: "+ t);
+			//System.out.println("Writting to file: "+ t);
 		    }
 		    writer.close();
 		} catch (IOException e) {
@@ -126,7 +125,6 @@ public class MethodExtractor {
 	 */
 
 	private URLClassLoader testLoader() throws MalformedURLException {
-		String urlsTestPath="/home/mau/Research/defects4jJava8/defects4j/ExamplesCheckedOut/math2Buggy/target/classes:/home/mau/Research/defects4jJava8/defects4j/ExamplesCheckedOut/math2Buggy/target/test-classes:/home/mau/Research/MLFaultLocProject/GPLibs/junit-4.12.jar:/home/mau/Research/defects4jJava8/defects4j/ExamplesCheckedOut/math2Buggy/lib/junit-4.8.2.jar";
 		String[] split = urlsTestPath.split(":");
 		URL[] urls = new URL[split.length];
 		for(int i = 0; i < split.length; i++) {
@@ -149,8 +147,8 @@ public class MethodExtractor {
 	}
     
 	private ArrayList<String> getTestMethodsFromClazz(String clazzName, URLClassLoader testLoader) {
-		System.out.println("");
-		System.out.println("clazzName: " + clazzName + " testLoader: "+ testLoader.getURLs()[0] );
+		//System.out.println("");
+		//System.out.println("clazzName: " + clazzName + " testLoader: "+ testLoader.getURLs()[0] );
 		ArrayList<String> realTests = new ArrayList<String>();
 		try {
 			clazzName=clazzName.replace("/",".");
@@ -163,7 +161,6 @@ public class MethodExtractor {
 System.out.println(testClazz);
 				TestSuite actualTest = (TestSuite) testClazz.getMethod("suite").invoke(testClazz);
 
-		System.out.println("here");
 				int numTests = actualTest.countTestCases();
 				for(int i = 0; i < numTests; i++) {
 					Test t = actualTest.testAt(i);
@@ -194,8 +191,8 @@ System.out.println(testClazz);
 		    }
 		} catch (ClassNotFoundException e) {
 			
-			System.out.println("Test class " + clazzName + " not found in ExplodeTests!");
-			System.out.println("");
+			System.out.println("Test class " + clazzName + " NOT FOUND in ExplodeTests!");
+			//System.out.println("");
 		}
 		return realTests;
 	}
@@ -236,7 +233,6 @@ System.out.println(testClazz);
 			// initially positive classes and I'm 90% sure this isn't going to work
 			for(String clazzName : initialPosTests) {
 				if(!clazzName.contains("::")) {
-					System.out.println("got here");
 					for(String m : getTestMethodsFromClazz(clazzName, testLoader)) {
 						realPosTests.add(clazzName + "::" + m);
 					}

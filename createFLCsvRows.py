@@ -24,19 +24,27 @@ pathToSource=""
 #difference of buggy and fixed to get the class value
 
 
-def createPosAndNegFiles():
-	posClasses = getEditedFiles()
+def createPosAndNegClasses():
+	posClasses = getRelevantTests()
 	for p in posClasses:
-		cmd = "echo " + str(p) + " >> " + str(buggyPath) + "tests.pos "
-		print cmd
+		cmd = "echo " + str(p).strip() + " >> " + str(buggyPath) + "tests.pos "
+		#print cmd
 		p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	
 
 	negTestCases = getFailingTests()
 	for p in negTestCases:
-		cmd = "echo " + str(p) + " >> " + str(buggyPath) + "tests.neg "
-		print cmd
+		cmd = "echo " + str(p).strip() + " >> " + str(buggyPath) + "tests.neg "
+		#print cmd
 		p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+def createPosAndNegMethods():
+	p = subprocess.Popen("defects4j export -p cp.test", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	for i in p.stdout:
+		print i
+		cmd="java -cp .:junit-4.12.jar MethodExtractor "+str(buggyPath) + "tests.pos "+str(buggyPath) + "tests.neg "+i
+		print "CMD: "+cmd
+		#p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def writeClassValue():
 	for f in getEditedFiles():
@@ -143,11 +151,17 @@ def getFailingTests():
 	cmd = defects4jCommand + " export -p tests.trigger"
 	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	return [ line for line in p.stdout ]
+
+def getRelevantTests():
+	#Relevant tests are the ones that touch the modified class
+	cmd = defects4jCommand + " export -p tests.relevant"
+	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	return [ line for line in p.stdout ]
 	
 def generateCoverageNeg(listOfNegTC):
 	fileNum=0
 	for negTest in listOfNegTC:
-		print negTest
+		#print negTest
 		cmd = defects4jCommand + " coverage -t " + negTest + " -w " + str(buggyPath) 
 		p = subprocess.call(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
 		#rename it to buggy (if there is more than one buggy test then create several coverageNeg.xml and then merge them)
@@ -182,7 +196,7 @@ def main():
 	
 	#checkout buggy and fixed versions
 	checkout(buggyPath, project, bug, "b")
-	checkout(fixedPath, project, bug, "f")
+	#checkout(fixedPath, project, bug, "f")
 	setScrPath()
 	
 	if(os.path.isfile(outputFile)):
@@ -205,7 +219,8 @@ def main():
 
 	writeNumberOfHits(buggyPath+"/coverageTot.xml",buggyPath+"/coverageNeg.xml")
 
-	createPosAndNegFiles()
+	createPosAndNegClasses()
+	createPosAndNegMethods()
 	
 	#writeClassValue()
 	
