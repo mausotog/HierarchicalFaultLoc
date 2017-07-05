@@ -76,7 +76,11 @@ public class MethodExtractor {
 	public MethodExtractor(String posTestFile, String negTestFile, String urlsTestPath) {
 		//WE COULD ALSO GET THIS FROM defects4j export -p cp.test I THINK
 		this.urlsTestPath = urlsTestPath;
+
 		ArrayList<String> intermedPosTests = null, intermedNegTests = null;
+
+		methodsPosFileName=posTestFile.substring(0,posTestFile.lastIndexOf("/"))+"/methods.pos";
+		methodsNegFileName=negTestFile.substring(0,negTestFile.lastIndexOf("/"))+"/methods.neg";
 
 		intermedPosTests = getTests(posTestFile);
 		intermedNegTests = getTests(negTestFile);
@@ -101,6 +105,7 @@ public class MethodExtractor {
 		    PrintWriter writer = new PrintWriter(fileName, "UTF-8");
 		    for(String t : tests){
 		    	writer.println(t);
+			System.out.println("Writting to file: "+ t);
 		    }
 		    writer.close();
 		} catch (IOException e) {
@@ -121,7 +126,7 @@ public class MethodExtractor {
 	 */
 
 	private URLClassLoader testLoader() throws MalformedURLException {
-		
+		String urlsTestPath="/home/mau/Research/defects4jJava8/defects4j/ExamplesCheckedOut/math2Buggy/target/classes:/home/mau/Research/defects4jJava8/defects4j/ExamplesCheckedOut/math2Buggy/target/test-classes:/home/mau/Research/MLFaultLocProject/GPLibs/junit-4.12.jar:/home/mau/Research/defects4jJava8/defects4j/ExamplesCheckedOut/math2Buggy/lib/junit-4.8.2.jar";
 		String[] split = urlsTestPath.split(":");
 		URL[] urls = new URL[split.length];
 		for(int i = 0; i < split.length; i++) {
@@ -130,6 +135,8 @@ public class MethodExtractor {
 			URL url = f.toURI().toURL();
 			urls[i] = url;
 		}
+		for(int i=0; i<urls.length;++i)
+			System.out.println("url: "+urls[i]);
 		return new URLClassLoader(urls);
 	}
 	
@@ -142,20 +149,30 @@ public class MethodExtractor {
 	}
     
 	private ArrayList<String> getTestMethodsFromClazz(String clazzName, URLClassLoader testLoader) {
+		System.out.println("");
+		System.out.println("clazzName: " + clazzName + " testLoader: "+ testLoader.getURLs()[0] );
 		ArrayList<String> realTests = new ArrayList<String>();
 		try {
-		Class<?> testClazz = Class.forName(clazzName, true, testLoader);
-		try {
-		TestSuite actualTest = (TestSuite) testClazz.getMethod("suite").invoke(testClazz);
-		int numTests = actualTest.countTestCases();
-		for(int i = 0; i < numTests; i++) {
-			Test t = actualTest.testAt(i);
-			String testName = t.toString();
-			String[] split = testName.split(Pattern.quote("("));
-			String methodName = split[0];
-			realTests.add(methodName);
-		}
-		} catch (NoSuchMethodException |IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
+			clazzName=clazzName.replace("/",".");
+			//String[] arr = clazzName.split("/");
+			//clazzName=arr[arr.length-1];			
+			if(clazzName.endsWith("/java")) clazzName=clazzName.substring(0,clazzName.length()-5);
+			//System.out.println(clazzName);
+			Class<?> testClazz = Class.forName(clazzName, true, testLoader);
+		    try {
+System.out.println(testClazz);
+				TestSuite actualTest = (TestSuite) testClazz.getMethod("suite").invoke(testClazz);
+
+		System.out.println("here");
+				int numTests = actualTest.countTestCases();
+				for(int i = 0; i < numTests; i++) {
+					Test t = actualTest.testAt(i);
+					String testName = t.toString();
+					String[] split = testName.split(Pattern.quote("("));
+					String methodName = split[0];
+					realTests.add(methodName);
+				}
+		    } catch (NoSuchMethodException |IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
 			// invoke of "suite" likely failed.  Try something else.
 			  // Given a bunch of classes, find all of the JUnit test-methods defined by them.
 		      for (Description test : Request.aClass(testClazz).getRunner().getDescription().getChildren()) {
@@ -176,7 +193,9 @@ public class MethodExtractor {
 		      }
 		    }
 		} catch (ClassNotFoundException e) {
+			
 			System.out.println("Test class " + clazzName + " not found in ExplodeTests!");
+			System.out.println("");
 		}
 		return realTests;
 	}
@@ -206,6 +225,7 @@ public class MethodExtractor {
 				}
 			}
 			
+			
 			for(String clazzName : negClazzes.keySet()) {
 				if(initialPosTests.contains(clazzName)) {
 					initialPosTests.remove(clazzName);
@@ -216,6 +236,7 @@ public class MethodExtractor {
 			// initially positive classes and I'm 90% sure this isn't going to work
 			for(String clazzName : initialPosTests) {
 				if(!clazzName.contains("::")) {
+					System.out.println("got here");
 					for(String m : getTestMethodsFromClazz(clazzName, testLoader)) {
 						realPosTests.add(clazzName + "::" + m);
 					}
@@ -265,7 +286,8 @@ public class MethodExtractor {
 	}
 
 	public static void main(String[] args){
-		MethodExtractor me = new MethodExtractor(args[1],args[2],args[3]);
+		MethodExtractor me = new MethodExtractor(args[0],args[1],args[2]);
+		
 	}
 
 	
