@@ -1,3 +1,7 @@
+javac -cp .:libsLAWS/* LinesAssocWithStmts.java
+
+java -cp .:libsLAWS/* LinesAssocWithStmts /home/mau/Research/MLFaultLocProject/MethodExtractor.java
+
 javac -cp .:junit-4.12.jar MethodExtractor.java
 
 java -cp .:junit-4.12.jar MethodExtractor /home/mau/Research/defects4jJava8/defects4j/ExamplesCheckedOut/math2Buggy/pos.tests /home/mau/Research/defects4jJava8/defects4j/ExamplesCheckedOut/math2Buggy/neg.tests com.google.javascript.jscomp
