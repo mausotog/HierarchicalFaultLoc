@@ -92,7 +92,7 @@ public class MethodExtractor {
 		}
 		writeToFile(methodsPosFileName, positiveTests);
 		
-		for(String negTest : intermedNegTests) {head 
+		for(String negTest : intermedNegTests) {
 			negativeTests.add(negTest);
 		}
 		writeToFile(methodsNegFileName, negativeTests);

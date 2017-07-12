@@ -7,6 +7,8 @@ import subprocess
 import sys
 import shutil
 import time 
+import csv
+import pickle
 
 
 home="/home/mau/Research/"
@@ -15,10 +17,18 @@ defects4jCommand = d4jHome + "/framework/bin/defects4j"
 buggyPath=""
 fixedPath=""
 #suitePath=home+"/QualityEvaluationDefects4jGenProg/Evosuite30MinGenProgFixesEvosuite103Comparison/testSuites/"
-outputFile=""
+outputFile="output.csv"
+outputFileDotSer="output.ser"
 project=""
 bug=""
 pathToSource=""
+outputMatrix = []
+columnHitsPos=5
+columnNumOfLineNumber=2
+columnNumOfCovPassTest=6
+columnNumOfNonCovPassTest=7
+columnNumOfCovFailTest=8
+columnNumOfNonCovFailTest=9
 
 #navigate each line of the coverageNeg.xml and coveragePos.xml to record data from each line, things such as: line number, file name, method name, etc
 #difference of buggy and fixed to get the class value
@@ -28,23 +38,22 @@ def createPosAndNegClasses():
 	posClasses = getRelevantTests()
 	for p in posClasses:
 		cmd = "echo " + str(p).strip() + " >> " + str(buggyPath) + "tests.pos "
-		#print cmd
+		print cmd
 		p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	
 
 	negTestCases = getFailingTests()
 	for p in negTestCases:
 		cmd = "echo " + str(p).strip() + " >> " + str(buggyPath) + "tests.neg "
-		#print cmd
+		print cmd
 		p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def createPosAndNegMethods():
 	p = subprocess.Popen("defects4j export -p cp.test", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	for i in p.stdout:
-		print i
+		#print i
 		cmd="java -cp .:junit-4.12.jar MethodExtractor "+str(buggyPath) + "tests.pos "+str(buggyPath) + "tests.neg "+i
 		print "CMD: "+cmd
-		#p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		p = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def writeClassValue():
 	for f in getEditedFiles():
@@ -72,13 +81,14 @@ def setScrPath():
 		pathToSource = str(i).split("2>&1")[-1].strip()
 		#print pathToSource
 	
-		
-def getEditedFiles():
-	cmd = defects4jCommand + " export -p classes.modified"
-	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	return [ line.split("2>&1")[-1].strip().replace(".", "/") + ".java" for line in p.stdout ]
+#def getEditedFiles():
+#	cmd = defects4jCommand + " export -p classes.modified"
+#	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#	return [ line.split("2>&1")[-1].strip().replace(".", "/") + ".java" for line in p.stdout ]
+	
 
 #FIX THIS
+###############################################
 def getADiff(pathToFile, new):
 	cmd = "diff -w --unchanged-line-format=\"\"  "
 	if new:
@@ -111,6 +121,7 @@ def getADiff(pathToFile, new):
 				#print "Appending to ret: \'" + str(changedLine) + "\'"
 				ret.append(changedLine)
 	return ret
+####################################################
 
 def updateGlobalVars(args):
 	global buggyPath
@@ -119,32 +130,47 @@ def updateGlobalVars(args):
 	fixedPath=d4jHome+"/ExamplesCheckedOut/"+str(args.project).lower()+str(args.bug)+"Fixed/"
 	#global suitePath=home+"/QualityEvaluationDefects4jGenProg/Evosuite30MinGenProgFixesEvosuite103Comparison/testSuites/"
 	global outputFile
-	outputFile=args.output
+	outputFile="attributeFiles/"+str(args.project)+str(args.bug)+".csv"
+	if not args.output is None:
+		outputFile=args.output
 	global bug
 	bug=args.bug
 	global project
 	project=args.project
-
+	global outputFileDotSer
+	outputFileDotSer="attributeFiles/"+str(args.project)+str(args.bug)+".ser"
+	if not args.output is None:
+		outputFile=args.output[:-4]+".ser"
+	
+	
+	
 def writeNumberOfHits(coverageTot,coverageNeg):
 	#calculate coverageTot.xml - coverageNeg.xml to get coveragePos.xml
 	eTot = xml.etree.ElementTree.parse(coverageTot).getroot()
 	eNeg = xml.etree.ElementTree.parse(coverageNeg).getroot()
 	
 	
-	linesT = eTot.findall(".//line")
+	linesT = eTot.findall(".//class/lines/line")
 	for lineT in linesT:
 		lineNumberT = lineT.attrib['number']
 		#look for this line in the neg file
-		linesN = eNeg.findall(".//line")
+		linesN = eNeg.findall(".//class/lines/line")
 		for lineN in linesN:
 			lineNumberN = lineN.attrib['number']
 			if(lineNumberN == lineNumberT):
 				hitsN = lineN.attrib['hits']
 				hitsT = lineT.attrib['hits']
 				hitsP = int(hitsT) - int(hitsN)
+				hitsP = str(hitsP)
 				#print lineNumberT+","+hitsT+","+hitsN+","+str(hitsP)
-				cmd = "echo \""+ project+","+bug+","+ lineNumberT+","+hitsT+","+hitsN+","+str(hitsP) +"\" >> "+ outputFile
-				p = subprocess.call(cmd, shell=True)#, cwd=bug.getBugPath(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+				listOfAttributes = []
+				listOfAttributes.append(project)
+				listOfAttributes.append(bug)
+				listOfAttributes.append(lineNumberT)
+				listOfAttributes.append(hitsT)
+				listOfAttributes.append(hitsN)
+				listOfAttributes.append(hitsP)
+				outputMatrix.append(listOfAttributes)
 				break
 	
 def getFailingTests():
@@ -157,75 +183,161 @@ def getRelevantTests():
 	cmd = defects4jCommand + " export -p tests.relevant"
 	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	return [ line for line in p.stdout ]
-	
-def generateCoverageNeg(listOfNegTC):
+
+def calculateCoverageAndRenameXMLFile(testName,newXmlName):
+	cmd = defects4jCommand + " coverage"
+	if len(testName) > 0:
+		cmd+=" -t " + testName + " -w " + str(buggyPath) 
+	p = subprocess.call(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+	p = subprocess.call("mv coverage.xml "+newXmlName, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+
+def generateCovNeg(listOfNegTC):
 	fileNum=0
 	for negTest in listOfNegTC:
-		#print negTest
-		cmd = defects4jCommand + " coverage -t " + negTest + " -w " + str(buggyPath) 
-		p = subprocess.call(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
-		#rename it to buggy (if there is more than one buggy test then create several coverageNeg.xml and then merge them)
-		p = subprocess.call("mv coverage.xml coverageNeg" + str(fileNum) + ".xml", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+		#TODO: rename it to buggy (if there is more than one buggy test then create several coverageNeg.xml and then merge them)
+		newName="coverageNeg" + str(fileNum) + ".xml"
+		calculateCoverageAndRenameXMLFile(negTest,newName)
 		fileNum+=1
-#TODO: MERGE ALL THE COVERAGE NEG INTO A SINGLE COVERAGE NEG, MEANWHILE I'M JUST RENAMING
+		#TODO: MERGE ALL THE COVERAGE NEG INTO A SINGLE COVERAGE NEG, MEANWHILE I'M JUST RENAMING
 		p = subprocess.call("mv coverageNeg0.xml coverageNeg.xml", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
 	
 def generateCovTot():
 	#run coverage with the whole test suite and create coverageTot.xml
-	cmd = defects4jCommand + " coverage" # -w " + bug.getFixPath() + " -s " + str(suitePath)
-	p = subprocess.call(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
-	p = subprocess.call("mv coverage.xml coverageTot.xml", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	calculateCoverageAndRenameXMLFile("","coverageTot.xml")
 
-#def getEditedFiles():
-#	cmd = defects4jCommand + " export -p classes.modified"
-#	p = subprocess.Popen(cmd, shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-#	return [ line.split("2>&1")[-1].strip().replace(".", "/") + ".java" for line in p.stdout ]
+def addMethodHits(negOrPos):
+	negOrPos=negOrPos.lower()
+	filePath=buggyPath+"/methods."+negOrPos
+	fileNum=0
+	negOrPos=negOrPos.capitalize()
+	with open(filePath) as f:
+	    for test in f:
+			print test
+			nameCovFile="coverage"+str(negOrPos)+"Test"+str(fileNum)+".xml"
+			calculateCoverageAndRenameXMLFile(test,nameCovFile)
+			addStatsPosAndNegTests(nameCovFile,negOrPos)
+			fileNum+=1
+		
+def addStatsPosAndNegTests(nameCovFile,negOrPos):
+	ePosTest = xml.etree.ElementTree.parse(buggyPath+nameCovFile).getroot()
+	
+	linesP = ePosTest.findall(".//class/lines/line")
+	for lineP in linesP:
+		lineNumberT = lineP.attrib['number']
+		#look for this line in the outputMatrix
+		for attributeRow in outputMatrix:
+			if str(attributeRow[0])!="Project":
+				#print "Comparing "+ str(lineP.attrib['hits']) + " to "+ str(0) + ". Are they equal? "+str(lineP.attrib['hits']) == str(0)
+				if attributeRow[columnNumOfLineNumber] == lineNumberT:
+					if str(lineP.attrib['hits']) != str(0) and negOrPos.lower()=="pos":
+						attributeRow[columnNumOfCovPassTest]+=1
+					elif str(lineP.attrib['hits']) == str(0) and negOrPos.lower()=="pos":
+						attributeRow[columnNumOfNonCovPassTest]+=1
+					elif str(lineP.attrib['hits']) != str(0) and negOrPos.lower()=="neg":
+						attributeRow[columnNumOfCovFailTest]+=1
+					elif str(lineP.attrib['hits']) == str(0) and negOrPos.lower()=="neg":
+						attributeRow[columnNumOfNonCovFailTest]+=1
+					else:
+						p = subprocess.call("echo ERROR, PLEASE CHECK", shell=True, cwd=buggyPath, stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+					
+def addZerosToSBFLAttributeColumns():
+	for attributeRow in outputMatrix:
+		if str(attributeRow[0])!="Project":
+			attributeRow.append(0)
+			attributeRow.append(0)
+			attributeRow.append(0)
+			attributeRow.append(0)
+
+	
+		
+def addFirstLineOfOutput():
+	listOfAttributes = []
+	listOfAttributes.append("Project")
+	listOfAttributes.append("Bug")
+	listOfAttributes.append("LineNum")
+	listOfAttributes.append("HitsTotal")
+	listOfAttributes.append("HitsNeg")
+	listOfAttributes.append("HitsPos")
+	listOfAttributes.append("CoveringPassingTests")
+	listOfAttributes.append("NonCoveringPassingTests")
+	listOfAttributes.append("CoveringFailingTests")
+	listOfAttributes.append("NonCoveringFailingTests")
+	listOfAttributes.append("ClassValue")
+	outputMatrix.append(listOfAttributes)
+
+def writeMatrixToCSVFile():
+	global outputMatrix
+	with open(outputFile, "wb") as f:
+	    writer = csv.writer(f)
+	    writer.writerows(outputMatrix)
+	    
+def loadSerializable(serializableMatrix):
+	global outputMatrix
+	f=open(serializableMatrix,'r')
+	outputMatrix = pickle.load(f)
+	f.close()
+	
+def createSerializable():
+	print outputFileDotSer
+	f=open(outputFileDotSer,'wb')
+	pickle.dump(outputMatrix, f)
+	f.close()
 	
 def getOptions():
-#ask as param project and bug number
-	parser = argparse.ArgumentParser(description="This script assumes a buggy version has already been checked out and manually changed to include only positive test cases or only negative. Example of usage: python createFLCsvRows.py Closure 38 /home/mau/Research/MLFaultLocProject/output.csv")
+	#ask as param project and bug number
+	parser = argparse.ArgumentParser(description="Example of usage: python createFLCsvRows.py Closure 38")
 	parser.add_argument("project", help="the project in upper case (ex: Lang, Chart, Closure, Math, Time)")
 	parser.add_argument("bug", help="the bug number (ex: 1,2,3,4,...)")
-	parser.add_argument("output", help="full path of the output file")
+	parser.add_argument("--serializable", help="full path of the serializable file containing previous results for one project")
+	parser.add_argument("--output", help="full path of the output file")
 	return parser.parse_args()
 	
 def main():
 	args=getOptions()
-	#errorHandling(args)
 	updateGlobalVars(args)
-	
-	#checkout buggy and fixed versions
-	checkout(buggyPath, project, bug, "b")
-	#checkout(fixedPath, project, bug, "f")
-	setScrPath()
-	
-	if(os.path.isfile(outputFile)):
-		os.remove(outputFile)
-	cmd = "echo \"Project,Bug,Line Number,hitsTotal,hitsNeg,hitsPos\" >> "+ outputFile
-	p = subprocess.call(cmd, shell=True)#, cwd=bug.getBugPath(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	if not args.serializable is None:
+		loadSerializable(args.serializable)
+		#checkout buggy and fixed versions
+		checkout(buggyPath, project, bug, "b")
+		#checkout(fixedPath, project, bug, "f")
+		setScrPath()
+
+
+	print str(outputMatrix[0])
+	if int(len(outputMatrix[0])-1) < columnHitsPos:
+		addFirstLineOfOutput()
 				
-	#creating xml file
-	pathToXmlFile=buggyPath+"/coverage.xml"
-	if os.path.exists(pathToXmlFile):
-		os.remove(pathToXmlFile)
+		#creating xml file
+		pathToXmlFile=buggyPath+"/coverage.xml"
+		if os.path.exists(pathToXmlFile):
+			os.remove(pathToXmlFile)
 		
-	#obtain test that fails in buggy version by running defects4j info (maybe there is an easier way)
-	failingTestList=getFailingTests()
+		#obtain test that fails in buggy version by running defects4j info (maybe there is an easier way)
+		failingTestList=getFailingTests()
 	
-	#run only that one using coverage -t and create coverageNeg.xml
-	generateCoverageNeg(failingTestList)
-	#run coverage to get the coverage of all the test suite
-	generateCovTot()
+		#run only that one using coverage -t and create coverageNeg.xml
+		generateCovNeg(failingTestList)
+		#run coverage to get the coverage of all the test suite
+		generateCovTot()
+		writeNumberOfHits(buggyPath+"/coverageTot.xml",buggyPath+"/coverageNeg.xml")
 
-	writeNumberOfHits(buggyPath+"/coverageTot.xml",buggyPath+"/coverageNeg.xml")
 
-	createPosAndNegClasses()
-	createPosAndNegMethods()
+	if int(len(outputMatrix[0])-1) < columnNumOfNonCovFailTest:
+		createPosAndNegClasses()
+		createPosAndNegMethods()
+		addZerosToSBFLAttributeColumns()
+		addMethodHits("neg")
+		addMethodHits("pos")
 	
 	#writeClassValue()
 	
-	
-	###################################################
+	if(os.path.isfile(outputFileDotSer)):
+		os.remove(outputFileDotSer)
+	createSerializable()
+	if(os.path.isfile(outputFile)):
+		os.remove(outputFile)
+	writeMatrixToCSVFile()
 
 	print "Results in "+outputFile
+	
 main()
